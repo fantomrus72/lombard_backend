@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lombard_db
+    environment:
+      POSTGRES_USER: pioneer_user
+      POSTGRES_PASSWORD: pioneer_password
+      POSTGRES_DB: lombard_pioneer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pioneer_user -d lombard_pioneer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: lombard_backend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: pioneer_user
+      DATABASE_PASSWORD: pioneer_password
+      DATABASE_NAME: lombard_pioneer
+      FRONTEND_URL: http://localhost:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./node_modules:/app/node_modules
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./nest-cli.json:/app/nest-cli.json
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+    user: root
+    command: sh -c "rm -rf /app/dist && npm run start:dev"
+
+volumes:
+  postgres_data:
